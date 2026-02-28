@@ -1,6 +1,6 @@
-library 1eee;
+library ieee;
 use ieee.std_logic_1164.all;
-use ieee.number_std.all;
+use ieee.numeric_std.all;
 
 entity joysticks is
 	port(
@@ -10,7 +10,9 @@ entity joysticks is
 		
 		joy1 : out std_logic_vector(1 downto 0); -- 2-bit direction vector - 0123/UDLR
 		joy2 : out std_logic_vector(1 downto 0); 
-	
+
+		KEY: in std_logic_vector(1 downto 0);
+--		LEDR: out std_logic_vector(1 downto 0) --debugging
 	);
 end entity joysticks;
 
@@ -24,7 +26,42 @@ architecture behavioral of joysticks is
 	signal adc2_nxt : std_logic_vector(11 downto 0);
 	signal adc3_val : std_logic_vector(11 downto 0);
 	signal adc3_nxt : std_logic_vector(11 downto 0);
+	
+	signal joy1_V : std_logic_vector(1 downto 0); -- ADC0 0:L, 1:M, 2:H, 3:N/A
+	signal joy1_H : std_logic_vector(1 downto 0); -- ADC1 
+	signal joy2_V : std_logic_vector(1 downto 0); -- ADC2
+	signal joy2_H : std_logic_vector(1 downto 0); -- ADC3
+	
+	signal joy1_nxt : std_logic_vector(1 downto 0);
+	signal joy2_nxt : std_logic_vector(1 downto 0);
+	signal joy1_lst : std_logic_vector(1 downto 0);
+	signal joy2_lst : std_logic_vector(1 downto 0);
+	
+	constant DELAY_2     : integer:=500;	--adc channel swap delay
+	signal sample_delay  : integer range 0 to DELAY_2;
+	signal nsample_delay : integer range 0 to DELAY_2;
+	
+	type state_type_adc is (READ_CH0, WAIT0, READ_CH1, WAIT1, READ_CH2, WAIT2, READ_CH3, WAIT3);
+	signal state, next_state : state_type_adc;
 
+	--ADC signals 
+	signal CONNECTED_TO_command_valid				: std_logic:='1'; --valid/always send command
+	signal CONNECTED_TO_command_channel				: std_logic_vector(4 downto 0); --channel
+	signal next_channel									: std_logic_vector(4 downto 0); --channel
+	constant CONNECTED_TO_command_startofpacket	: std_logic:='1';	--IGNORE(?)
+	constant CONNECTED_TO_command_endofpacket		: std_logic:='1';	--IGNORE(?)
+	signal CONNECTED_TO_command_ready				: std_logic;
+	signal CONNECTED_TO_response_valid				: std_logic;
+	signal CONNECTED_TO_response_channel			: std_logic_vector(4 downto 0);
+	signal CONNECTED_TO_response_data				: std_logic_vector(11 downto 0);
+	signal CONNECTED_TO_response_startofpacket	: std_logic;
+	signal CONNECTED_TO_response_endofpacket		: std_logic;
+		
+	--PLL signals
+	signal c0: std_logic;
+	signal locked: std_logic;
+--	signal areset_watuwant: std_logic;	--ACTIVE HIGH RST
+	
 	component joystick_adc_2ch is
 		port (
 			clock_clk              : in  std_logic                     := 'X';             -- clk
@@ -44,36 +81,23 @@ architecture behavioral of joysticks is
 		);
 	end component joystick_adc_2ch;
 	
-	component pll_10MHz_inst is
+	component pll_10MHz is
 		port (
-			areset	:
-			inclk0	:
-			c0			:
-			locked	:
+--			areset	: in std_logic:='X';
+			inclk0	: in std_logic;
+			c0			: out std_logic;
+			locked	: out std_logic
 		);
-
---ADC signals 
-signal CONNECTED_TO_command_valid			: std_logic:='1'; --valid/always send command
-signal CONNECTED_TO_command_channel			: std_logic_vector(4 downto 0); --channel
-signal next_channel							: std_logic_vector(4 downto 0); --channel
-constant CONNECTED_TO_command_startofpacket	: std_logic:='1';	--IGNORE(?)
-constant CONNECTED_TO_command_endofpacket	: std_logic:='1';	--IGNORE(?)
-signal CONNECTED_TO_command_ready			: std_logic;
-signal CONNECTED_TO_response_valid			: std_logic;
-signal CONNECTED_TO_response_channel		: std_logic_vector(4 downto 0);
-signal CONNECTED_TO_response_data			: std_logic_vector(11 downto 0);
-signal CONNECTED_TO_response_startofpacket	: std_logic;
-signal CONNECTED_TO_response_endofpacket	: std_logic;
+	end component pll_10MHz;
 	
-	
-begin
+begin --architecture
 	
 	adc_u0 : component joystick_adc_2ch
 		port map (
-			clock_clk              => CONNECTED_TO_clock_clk,              --          clock.clk
-			reset_sink_reset_n     => CONNECTED_TO_reset_sink_reset_n,     --     reset_sink.reset_n
-			adc_pll_clock_clk      => CONNECTED_TO_adc_pll_clock_clk,      --  adc_pll_clock.clk
-			adc_pll_locked_export  => CONNECTED_TO_adc_pll_locked_export,  -- adc_pll_locked.export
+			clock_clk              => ADC_CLK_10,              --          clock.clk
+			reset_sink_reset_n     => KEY(0),     --     reset_sink.reset_n
+			adc_pll_clock_clk      => c0,      --  adc_pll_clock.clk
+			adc_pll_locked_export  => locked,  -- adc_pll_locked.export
 			command_valid          => CONNECTED_TO_command_valid,          --        command.valid
 			command_channel        => CONNECTED_TO_command_channel,        --               .channel
 			command_startofpacket  => CONNECTED_TO_command_startofpacket,  --               .startofpacket
@@ -86,14 +110,260 @@ begin
 			response_endofpacket   => CONNECTED_TO_response_endofpacket    --               .endofpacket
 		);
 		
-	pll_10MHz_inst : component pll_10MHz 
+	pll_inst : component pll_10MHz 
 		PORT MAP (
-			areset	 => areset_sig,
-			inclk0	 => inclk0_sig,
-			c0	 => c0_sig,
-			locked	 => locked_sig
+--			areset	=> areset_watuwant,
+			inclk0	=> ADC_CLK_10,
+			c0	 		=> c0,
+			locked	=> locked
 		);
 	
+	
+	process (ADC_CLK_10, KEY(0))
+	begin
+
+		if KEY(0) = '0' then
+			--reset
+			state <= READ_CH0;
+			adc0_val <= "100";
+			adc1_val <= "100";
+			adc2_val <= "100";
+			adc3_val <= "100";
+			sample_delay <= 0;
+
+			--areset <= '1'; --reset PLL(?)
+
+			joy1 <= "11"; --Default is LEFT
+			joy2 <= "11";
+						
+--			LEDR <= (others => '0');
+			
+		elsif rising_edge(ADC_CLK_10) then
+			--clocked processes
+			--areset <= '0'; 
+			
+			state <= next_state;
+			CONNECTED_TO_command_channel <= next_channel;
+			
+			--Read in ADC channel
+			if(CONNECTED_TO_response_valid = '1') then
+				if (CONNECTED_TO_response_channel = "00001") then
+					adc0_val <= CONNECTED_TO_response_data;
+					adc1_val <= adc1_nxt;
+					adc2_val <= adc2_nxt;
+					adc3_val <= adc3_nxt;
+				elsif (CONNECTED_TO_response_channel = "00010") then
+					adc0_val <= adc0_nxt;
+					adc1_val <= CONNECTED_TO_response_data;
+					adc2_val <= adc2_nxt;
+					adc3_val <= adc3_nxt;
+				elsif (CONNECTED_TO_response_channel = "00011") then
+					adc0_val <= adc0_nxt;
+					adc1_val <= adc1_nxt;
+					adc2_val <= CONNECTED_TO_response_data;
+					adc3_val <= adc3_nxt;
+				elsif (CONNECTED_TO_response_channel = "00100") then
+					adc0_val <= adc0_nxt;
+					adc1_val <= adc1_nxt;
+					adc2_val <= adc2_nxt;
+					adc3_val <= CONNECTED_TO_response_data;
+				else
+					adc0_val <= adc0_nxt;
+					adc1_val <= adc1_nxt;
+					adc2_val <= adc2_nxt;
+					adc3_val <= adc3_nxt;				
+				end if; --read in channels
+			end if;
+			
+			--turn off leds(?)
+--			LEDR <= (others => '0');
+			
+			--timer incrementing
+			sample_delay <= nsample_delay;
+			
+			--update joystick output
+			joy1 <= joy1_nxt;
+			joy2 <= joy2_nxt;
+			joy1_lst <= joy1_nxt;
+			joy2_lst <= joy2_nxt;
+			
+			
+			
+		end if;
+	end process; --10MHz
+	
+	
+	
+	
+	process (CONNECTED_TO_command_ready, CONNECTED_TO_response_valid, CONNECTED_TO_response_channel, CONNECTED_TO_response_data)
+	begin
+		
+		--State machine: adc channel swapping
+			--command always valid - continuous reading
+		case state is
+			--idle
+			--set channel to CH0
+			when READ_CH0 =>
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT0;
+					next_channel <= "00001";
+				else
+					next_state <= READ_CH0;
+					next_channel <= "00001";
+				end if;
+			--wait for CH1 to read
+			when WAIT0 =>
+				next_channel <= "00001";
+				if CONNECTED_TO_command_ready = '0' and sample_delay = DELAY_2 then --start of reading adc block
+					next_state <= WAIT0;
+					nsample_delay <= sample_delay +1;
+				else
+					next_state <= READ_CH1;
+					nsample_delay <= 0;
+				end if;
+			
+			--set channel to CH1
+			when READ_CH1 =>
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT1;
+					next_channel <= "00010";
+				else
+					next_state <= READ_CH1;
+					next_channel <= "00010";
+				end if;
+			--wait for CH1 to read
+			when WAIT1 =>
+				next_channel <= "00010";
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT1;
+				else
+					next_state <= READ_CH2;
+					nsample_delay <= 0;
+				end if;			
+				
+
+				when READ_CH2 =>
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT2;
+					next_channel <= "00011";
+				else
+					next_state <= READ_CH2;
+					next_channel <= "00011";
+				end if;
+			when WAIT2 =>
+				next_channel <= "00011";
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT2;
+				else
+					next_state <= READ_CH3;
+					nsample_delay <= 0;
+				end if;			
+
+				
+				when READ_CH3 =>
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT3;
+					next_channel <= "00100";
+				else
+					next_state <= READ_CH3;
+					next_channel <= "00100";
+				end if;
+			when WAIT3 =>
+				next_channel <= "00011";
+				nsample_delay <= 0;
+				if CONNECTED_TO_command_ready = '1' then
+					next_state <= WAIT3;
+				else
+					next_state <= READ_CH0;
+					nsample_delay <= 0;
+				end if;								
+			
+			when others =>
+				nsample_delay <= 0;
+				next_state <= READ_CH0;
+				next_channel <= "00001";
+		end case;
+	
+	--Hold previous values
+	adc0_nxt <= adc0_val;
+	adc1_nxt <= adc1_val;
+	adc2_nxt <= adc2_val;
+	adc3_nxt <= adc3_val;
+	
+	--additional timer???		
+
+	end process; --channel updates
+		
+	process(adc0_val, adc1_val, adc2_val, adc3_val, KEY(0))
+	begin
+		if KEY(0) = '0' then
+			joy1_nxt <= "11";
+			joy2_nxt <= "11";
+
+		else
+		
+			--JOYSTICK #1 - adc0 & adc1
+			if (adc0_val >= X"000" AND adc0_val < x"500") then --joy1 down case
+				if (adc0_val < adc1_val) then		--if DOWN
+					joy1_nxt <= "01";
+				else										--if LEFT
+					joy1_nxt <= "10";
+				end if;
+				
+			elsif (adc0_val > X"900" AND adc0_val <= x"FFF") then --joy1 up case
+				if (adc0_val > adc1_val) then		--if UP
+					joy1_nxt <= "0";
+				else										--if RIGHT
+					joy1_nxt <= "11";
+				end if;
+				
+			else
+				if (adc1_val >= X"000" AND adc1_val < x"500") then	--joy1 LEFT mid
+					joy1_nxt <= "10";
+				elsif (adc1_val > X"900" AND adc1_val <= x"FFF") then	--joy1 RIGHT mid
+					joy1_nxt <= "11";
+				else
+					joy1_nxt <= joy1_lst; --middle: retain last direction
+				end if;				
+			end if;
+
+			
+			--JOYSTICK #2 - adc2 & adc3
+			if (adc2_val >= X"000" AND adc2_val < x"500") then --joy2 down case
+				if (adc2_val < adc3_val) then		--if DOWN
+					joy2_nxt <= "01";
+				else										--if LEFT
+					joy2_nxt <= "10";
+				end if;
+				
+			elsif (adc2_val > X"900" AND adc2_val <= x"FFF") then --joy2 up case
+				if (adc2_val > adc3_val) then		--if UP
+					joy2_nxt <= "00";
+				else										--if RIGHT
+					joy2_nxt <= "11";
+				end if;
+				
+			else
+				if (adc3_val >= X"000" AND adc3_val < x"500") then	--joy2 LEFT mid
+					joy2_nxt <= "10";
+				elsif (adc3_val > X"900" AND adc3_val <= x"FFF") then	--joy2 RIGHT mid
+					joy2_nxt <= "11";
+				else
+					joy2_nxt <= joy2_lst; --middle: retain last direction
+				end if;				
+			end if;
+			
+			
+		end if;
+	
+	end process;
+
 	
 end architecture behavioral;
 

@@ -19,6 +19,7 @@ end entity board;
 architecture arch of board is
     constant BLACK      : std_logic_vector(11 downto 0) := X"000";
     constant WHITE      : std_logic_vector(11 downto 0) := X"FFF";
+    constant BOARDBLUE               : std_logic_vector(11 downto 0) := X"036";
 	 begin
     process(clk, rst) is begin
         if rst = '1' then
@@ -36,13 +37,13 @@ architecture arch of board is
                         blue  <= BLACK(3  downto 0);
 
                         -- board outline (your original walls)
-                        if (((row > 32) and  (row < 480)) and (col = 2)) or
-                           (((row > 32) and  (row < 480)) and (col = 660)) then
+                        if (((row > 16) and  (row < 464)) and (col = 1)) or
+                           (((row > 16) and  (row < 464)) and (col = 639)) then
                             red   <= WHITE(11 downto 8);
                             green <= WHITE(7  downto 4);
                             blue  <= WHITE(3  downto 0);
 
-                        elsif ((row = 480) and ((col > 2) and (col < 680))) then
+                        elsif ((row = 480) and ((col > 1) and (col < 639))) then
                             red   <= WHITE(11 downto 8);
                             green <= WHITE(7  downto 4);
                             blue  <= WHITE(3  downto 0);

@@ -18,6 +18,7 @@ architecture arch of top is
 
     signal Start : std_logic;
     signal clock: std_logic;
+	 signal other_clock: std_logic;
     signal locked_sig : std_logic;
 
     component VGA
@@ -37,6 +38,7 @@ architecture arch of top is
         areset : IN STD_LOGIC := '0';
         inclk0 : IN STD_LOGIC := '0';
         c0     : OUT STD_LOGIC;
+		  c1     : OUT STD_LOGIC;
         locked : OUT STD_LOGIC
     );
     end component pll;
@@ -46,7 +48,8 @@ architecture arch of top is
         PORT MAP(
             areset => not KEY(0),
             inclk0 => MAX10_CLK1_50,
-            c0     => clock,
+            c0     => other_clock,
+				c1     => clock,
             locked => locked_sig
         );
 

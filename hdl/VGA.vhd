@@ -75,35 +75,45 @@ architecture arch of VGA is
         end process counter;
 
         sync : process(clk, rst) is begin
-            if rst = '1' then
-                vgaHS <= '1';
-                vgaVS <= '1';
-            elsif rising_edge(clk) then
-                if hCounter >= 0 and hCounter <hFrontPorch then
-                    vgaHS <= '1';
-                elsif hCounter >= (hFrontPorch -1) and hCounter < (hFrontPorch + hSyncPulse + hBackPorch -1) then
-                    vgaHS <= '0';
-                elsif hCounter >= (hFrontPorch + hSyncPulse -1) and hCounter < (hFrontPorch + hSyncPulse + hBackPorch  -1) then
-                    vgaHS <= '1';
-                else
-                    vgaHS <= '1';
-                end if;
+    if rst = '1' then
+        vgaHS <= '1';
+        vgaVS <= '1';
+    elsif rising_edge(clk) then
+        if hCounter >= 0 and hCounter < hFrontPorch - 1 then   
+            -- front porch
+            vgaHS <= '1';
+        elsif hCounter >= hFrontPorch - 1 and hCounter < (hFrontPorch + hSyncPulse - 1) then 
+            -- sync pulse
+            vgaHS <= '0';
+        elsif hCounter >= (hFrontPorch + hSyncPulse - 1) and hCounter < (hFrontPorch + hSyncPulse + hBackPorch - 1) then 
+            -- back porch
+            vgaHS <= '1';
+        else 
+            -- data
+            vgaHS <= '1';
+        end if; 
 
-                if vCounter >= 0 and vCounter < vFrontPorch - 1 then
-                    vgaVS <= '1';
-                elsif vCounter >= vFrontPorch - 1 and vCounter < (vFrontPorch + vSyncPulse + vBackPorch -1) then
-                    vgaVS <= '0';
-                elsif vCounter >= (vFrontPorch + vSyncPulse -1) and hCounter >= (hFrontPorch + hSyncPulse + hBackPorch -1) then
-                    vgaVS <= '1';
-                else
-                    vgaVS <= '1';
-                end if;
-                if vCounter >= (vFrontPorch + vSyncPulse + vBackPorch -1) and hCounter >= (hFrontPorch + hSyncPulse + hBackPorch -1) then
-                    pixEN <= '1';
-                else
-                    pixEN <= '0';
-                end if;
-            end if;
+        if vCounter >= 0 and vCounter < vFrontPorch- 1 then   
+            -- front porch
+            vgaVS <= '1';
+        elsif vCounter >= vFrontPorch- 1 and vCounter < (vFrontPorch+ vSyncPulse  - 1) then 
+            -- sync pulse
+            vgaVS <= '0';
+        elsif vCounter >= (vFrontPorch+ vSyncPulse  - 1) and vCounter < (vFrontPorch+ vSyncPulse  + vBackPorch - 1) then 
+            -- back porch
+            vgaVS <= '1';
+        else 
+            -- data
+            vgaVS <= '1';
+        end if; 
+
+        if vCounter >= (vFrontPorch+ vSyncPulse  + vBackPorch - 1) and hCounter >= (hFrontPorch + hSyncPulse + hBackPorch - 1) then
+            pixEN <= '1';
+        else
+            pixEN <= '0';
+        end if;
+
+    end if;
         end process sync;
 
     GBOARD: board 

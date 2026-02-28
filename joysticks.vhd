@@ -2,16 +2,20 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.snake_package.all;
+
 entity joysticks is
 	port(
-		ADC_CLK_10 : in std_logic;
+--		ADC_CLK_10 : in std_logic;
 		MAX10_CLK1_50 : in std_logic;
-		MAX10_CLK2_50 : in std_logic;
-		
-		joy1 : out std_logic_vector(1 downto 0); -- 2-bit direction vector - 0123/UDLR
-		joy2 : out std_logic_vector(1 downto 0); 
+		PLL_10MHz  : in std_logic;
+		locked	  : in std_logic;
+			
+		joy1 : out direction; -- 2-bit direction vector - 0123/UDLR
+		joy2 : out direction; 
 
-		KEY: in std_logic_vector(1 downto 0);
+		KEY: in std_logic_vector(1 downto 0)
 --		LEDR: out std_logic_vector(1 downto 0) --debugging
 	);
 end entity joysticks;
@@ -32,10 +36,10 @@ architecture behavioral of joysticks is
 	signal joy2_V : std_logic_vector(1 downto 0); -- ADC2
 	signal joy2_H : std_logic_vector(1 downto 0); -- ADC3
 	
-	signal joy1_nxt : std_logic_vector(1 downto 0);
-	signal joy2_nxt : std_logic_vector(1 downto 0);
-	signal joy1_lst : std_logic_vector(1 downto 0);
-	signal joy2_lst : std_logic_vector(1 downto 0);
+	signal joy1_nxt : direction;
+	signal joy2_nxt : direction;
+	signal joy1_lst : direction;
+	signal joy2_lst : direction;
 	
 	constant DELAY_2     : integer:=500;	--adc channel swap delay
 	signal sample_delay  : integer range 0 to DELAY_2;
@@ -57,10 +61,6 @@ architecture behavioral of joysticks is
 	signal CONNECTED_TO_response_startofpacket	: std_logic;
 	signal CONNECTED_TO_response_endofpacket		: std_logic;
 		
-	--PLL signals
-	signal c0: std_logic;
-	signal locked: std_logic;
---	signal areset_watuwant: std_logic;	--ACTIVE HIGH RST
 	
 	component joystick_adc_2ch is
 		port (
@@ -81,22 +81,14 @@ architecture behavioral of joysticks is
 		);
 	end component joystick_adc_2ch;
 	
-	component pll_10MHz is
-		port (
---			areset	: in std_logic:='X';
-			inclk0	: in std_logic;
-			c0			: out std_logic;
-			locked	: out std_logic
-		);
-	end component pll_10MHz;
 	
 begin --architecture
 	
-	adc_u0 : component joystick_adc_2ch
+	joystick_adc_2ch_inst : component joystick_adc_2ch
 		port map (
-			clock_clk              => ADC_CLK_10,              --          clock.clk
+			clock_clk              => MAX10_CLK1_50,              --          clock.clk
 			reset_sink_reset_n     => KEY(0),     --     reset_sink.reset_n
-			adc_pll_clock_clk      => c0,      --  adc_pll_clock.clk
+			adc_pll_clock_clk      => PLL_10MHz,      --  adc_pll_clock.clk
 			adc_pll_locked_export  => locked,  -- adc_pll_locked.export
 			command_valid          => CONNECTED_TO_command_valid,          --        command.valid
 			command_channel        => CONNECTED_TO_command_channel,        --               .channel
@@ -109,36 +101,28 @@ begin --architecture
 			response_startofpacket => CONNECTED_TO_response_startofpacket, --               .startofpacket
 			response_endofpacket   => CONNECTED_TO_response_endofpacket    --               .endofpacket
 		);
-		
-	pll_inst : component pll_10MHz 
-		PORT MAP (
---			areset	=> areset_watuwant,
-			inclk0	=> ADC_CLK_10,
-			c0	 		=> c0,
-			locked	=> locked
-		);
 	
 	
-	process (ADC_CLK_10, KEY(0))
+	process (MAX10_CLK1_50, KEY(0))
 	begin
 
 		if KEY(0) = '0' then
 			--reset
 			state <= READ_CH0;
-			adc0_val <= "100";
-			adc1_val <= "100";
-			adc2_val <= "100";
-			adc3_val <= "100";
+			adc0_val <= X"100";
+			adc1_val <= X"100";
+			adc2_val <= X"100";
+			adc3_val <= X"100";
 			sample_delay <= 0;
 
 			--areset <= '1'; --reset PLL(?)
 
-			joy1 <= "11"; --Default is LEFT
-			joy2 <= "11";
+			joy1 <= RIGHT_DIR; --Default is RIGHT
+			joy2 <= RIGHT_DIR;
 						
 --			LEDR <= (others => '0');
 			
-		elsif rising_edge(ADC_CLK_10) then
+		elsif rising_edge(MAX10_CLK1_50) then
 			--clocked processes
 			--areset <= '0'; 
 			
@@ -303,31 +287,31 @@ begin --architecture
 	process(adc0_val, adc1_val, adc2_val, adc3_val, KEY(0))
 	begin
 		if KEY(0) = '0' then
-			joy1_nxt <= "11";
-			joy2_nxt <= "11";
+			joy1_nxt <= RIGHT_DIR;
+			joy2_nxt <= RIGHT_DIR;
 
 		else
 		
 			--JOYSTICK #1 - adc0 & adc1
 			if (adc0_val >= X"000" AND adc0_val < x"500") then --joy1 down case
 				if (adc0_val < adc1_val) then		--if DOWN
-					joy1_nxt <= "01";
+					joy1_nxt <= DOWN_DIR;
 				else										--if LEFT
-					joy1_nxt <= "10";
+					joy1_nxt <= LEFT_DIR;
 				end if;
 				
 			elsif (adc0_val > X"900" AND adc0_val <= x"FFF") then --joy1 up case
 				if (adc0_val > adc1_val) then		--if UP
-					joy1_nxt <= "0";
+					joy1_nxt <= UP_DIR;
 				else										--if RIGHT
-					joy1_nxt <= "11";
+					joy1_nxt <= RIGHT_DIR;
 				end if;
 				
 			else
 				if (adc1_val >= X"000" AND adc1_val < x"500") then	--joy1 LEFT mid
-					joy1_nxt <= "10";
+					joy1_nxt <= LEFT_DIR;
 				elsif (adc1_val > X"900" AND adc1_val <= x"FFF") then	--joy1 RIGHT mid
-					joy1_nxt <= "11";
+					joy1_nxt <= RIGHT_DIR;
 				else
 					joy1_nxt <= joy1_lst; --middle: retain last direction
 				end if;				
@@ -337,23 +321,23 @@ begin --architecture
 			--JOYSTICK #2 - adc2 & adc3
 			if (adc2_val >= X"000" AND adc2_val < x"500") then --joy2 down case
 				if (adc2_val < adc3_val) then		--if DOWN
-					joy2_nxt <= "01";
+					joy2_nxt <= DOWN_DIR;
 				else										--if LEFT
-					joy2_nxt <= "10";
+					joy2_nxt <= LEFT_DIR;
 				end if;
 				
 			elsif (adc2_val > X"900" AND adc2_val <= x"FFF") then --joy2 up case
 				if (adc2_val > adc3_val) then		--if UP
-					joy2_nxt <= "00";
+					joy2_nxt <= UP_DIR;
 				else										--if RIGHT
-					joy2_nxt <= "11";
+					joy2_nxt <= RIGHT_DIR;
 				end if;
 				
 			else
 				if (adc3_val >= X"000" AND adc3_val < x"500") then	--joy2 LEFT mid
-					joy2_nxt <= "10";
+					joy2_nxt <= LEFT_DIR;
 				elsif (adc3_val > X"900" AND adc3_val <= x"FFF") then	--joy2 RIGHT mid
-					joy2_nxt <= "11";
+					joy2_nxt <= RIGHT_DIR;
 				else
 					joy2_nxt <= joy2_lst; --middle: retain last direction
 				end if;				

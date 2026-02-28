@@ -10,6 +10,9 @@ entity board is
         pixEN: in std_logic;
         row: in integer;
         col: in integer;
+        clk_10mhz: in std_logic;
+        clk_50mhz: in std_logic;
+        pll_locked: in std_logic;
         audio_out: out std_logic_vector(9 downto 0);
         red: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
@@ -29,7 +32,7 @@ architecture arch of board is
     constant SCORE_Y: integer := 2; -- vertical start of digit boxes
 
     -- your 6 score boxes:
-    -- 504â516, 520â532, 536â548, 552â564, 568â580, 584â596
+    -- 504-516, 520-532, 536-548, 552-564, 568-580, 584-596
     constant DIGIT5_X: integer := 504; -- most significant digit
     constant DIGIT4_X: integer := 520;
     constant DIGIT3_X: integer := 536;
@@ -37,7 +40,7 @@ architecture arch of board is
     constant DIGIT1_X: integer := 568;
     constant DIGIT0_X: integer := 584; -- least significant digit
 
-    -- score value (0..999999) â d5..d0
+    -- score value (0..999999) -> d5..d0
     signal score: integer range 0 to 999999 := 0;
 
     signal d0, d1, d2, d3, d4, d5: unsigned(3 downto 0);
@@ -96,7 +99,7 @@ begin
             if c < CHAR_W then
                 letter_row <= lr;
 
-                -- H A K U S U
+                -- H A C K U S U
                 case idx is
                     when 0 =>
                         cur_ch <= "000"; -- H
@@ -124,6 +127,18 @@ begin
 
         letter_on <= p;
     end process;
+
+    GAME: entity work.game_manager
+        port map (
+            clk => clk,
+            rst => rst,
+            start => start,
+            clk_10mhz => clk_10mhz,
+            clk_50mhz => clk_50mhz,
+            pll_locked => pll_locked,
+            audio_out => audio_out,
+            score => score
+        );
 
     FONT: entity work.Font
         port map (

@@ -22,7 +22,7 @@ architecture arch of top is
     signal pll_locked: std_logic;
     signal rst: std_logic;
     signal start: std_logic;
-    signal audio_out : std_logic_vector(9 downto 0);
+    signal audio_out : std_logic_vector(7 downto 0);
 
     component VGA
         port (
@@ -31,7 +31,7 @@ architecture arch of top is
             clk_10mhz: in std_logic;
             pll_locked: in std_logic;
             start: in std_logic;
-            audio_out: out std_logic_vector(9 downto 0);
+            audio_out: out std_logic_vector(7 downto 0);
             red: out std_logic_vector(3 downto 0);
             green: out std_logic_vector(3 downto 0);
             blue: out std_logic_vector(3 downto 0);
@@ -52,7 +52,7 @@ architecture arch of top is
 begin
     rst <= not KEY(0);
     start <= not KEY(1);
-    GPIO(9 downto 0) <= audio_out;
+    GPIO(7 downto 0) <= audio_out;
     PLL_INST: pll
         port map (
             areset => rst,
@@ -65,6 +65,7 @@ begin
     VGATOP: VGA
         port map (
             clk => vga_clock,
+            clk_50mhz => MAX10_CLK1_50,
             clk_10mhz => ten_mhz_clock,
             pll_locked => pll_locked,
             start => start,

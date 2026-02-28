@@ -17,9 +17,10 @@ entity VGA is
         clk: in std_logic;
         rst: in std_logic;
         clk_10mhz: in std_logic;
+        clk_50mhz: in std_logic;
         pll_locked: in std_logic;
         start: in std_logic;
-        audio_out: out std_logic_vector(9 downto 0);
+        audio_out: out std_logic_vector(7 downto 0);
         blue: out std_logic_vector(3 downto 0);
         green: out std_logic_vector(3 downto 0);
         red: out std_logic_vector(3 downto 0);
@@ -43,6 +44,9 @@ architecture arch of VGA is
             pixEN: in std_logic;
             row: in integer;
             col: in integer;
+            clk_10mhz: in std_logic;
+            clk_50mhz: in std_logic;
+            pll_locked: in std_logic;
             red: out std_logic_vector(3 downto 0);
             green: out std_logic_vector(3 downto 0);
             blue: out std_logic_vector(3 downto 0)
@@ -129,6 +133,9 @@ begin
             pixEN => pixEN,
             row => row,
             col => col,
+            clk_10mhz => clk_10mhz,
+            clk_50mhz => clk_50mhz,
+            pll_locked => pll_locked,
             red => red,
             green => green,
             blue => blue

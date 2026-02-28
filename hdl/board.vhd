@@ -17,9 +17,11 @@ entity board is
 end entity board;
 
 architecture arch of board is
-    constant BLACK      : std_logic_vector(11 downto 0) := X"000";
-    constant WHITE      : std_logic_vector(11 downto 0) := X"FFF";
+    constant BLACK    : std_logic_vector(11 downto 0) := X"000";
+    constant WHITE    : std_logic_vector(11 downto 0) := X"FFF";
     constant LETBLUE  : std_logic_vector(11 downto 0) := X"134";
+    constant PURPLE   : std_logic_vector(11 downto 0) := X"A0C";
+    constant RED      : std_logic_vector(11 downto 0) := X"F00";
 
     constant CHAR_W  : integer := 12;
     constant CHAR_H  : integer := 20;
@@ -44,10 +46,6 @@ architecture arch of board is
     signal font_row     : integer range 0 to CHAR_H-1 := 0;
     signal font_bits    : std_logic_vector(CHAR_W-1 downto 0);
     signal score_pix_on : std_logic := '0';
-
-
-    signal score_cnt : unsigned(25 downto 0) := (others => '0');
-    -- bit 25 on a 25–50 MHz clock will tick ~0.7–1.3 seconds-ish
 
     constant WORD_Y  : integer := 2;      -- top margin
     constant WORD_X  : integer := 20;     -- left margin
@@ -74,29 +72,7 @@ architecture arch of board is
         d5 <= to_unsigned(t mod 10, 4);
     end process;
 
-    ----------------------------------------------------------------
-    -- SUPER SIMPLE: AUTO-INCREMENT SCORE
-    -- Every time score_cnt MSB = 1, bump score and reset counter.
-    ----------------------------------------------------------------
-    ScoreIncrement : process(clk, rst)
-    begin
-        if rst = '1' then
-            score_cnt <= (others => '0');
-            score     <= 0;
-        elsif rising_edge(clk) then
-            score_cnt <= score_cnt + 1;
 
-            if score_cnt(score_cnt'high) = '1' then
-                score_cnt <= (others => '0');
-
-                if score < 999999 then
-                    score <= score + 1;
-                else
-                    score <= 0;
-                end if;
-            end if;
-        end if;
-    end process;
 
 LettersOverlay : process(row, col, pixEN, letter_bits)
   variable x, y : integer;

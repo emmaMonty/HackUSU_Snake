@@ -1,0 +1,18 @@
+library 1eee;
+use ieee.std_logic_1164.all;
+use ieee.number_std.all;
+
+entity joysticks is
+	port(
+	
+	
+	);
+end entity joysticks;
+
+architecture behavioral of joysticks is
+
+
+
+
+end architecture behavioral;
+

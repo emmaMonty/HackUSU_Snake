@@ -13,6 +13,7 @@ entity snake_tracker is
         rst: in std_logic;
         command: in direction;
         apple_pos: in position_board_t;
+        apple_valid: in boolean;
         ate: out std_logic;
         turn: out std_logic;
         crash: out std_logic;
@@ -78,7 +79,7 @@ begin
         end if;
     end process;
 
-    step: process(increment, circ_buffer, head, tail, command, apple_pos, next_occupied)
+    step: process(increment, circ_buffer, head, tail, command, apple_pos, apple_valid, next_occupied)
         variable collision: boolean := false;
         variable new_head_pos: position_board_t := circ_buffer(head);
         variable eating: boolean := false;
@@ -128,7 +129,7 @@ begin
                     new_head_pos.col := circ_buffer(head).col + 1;
                 end if;
             end if;
-            eating := (new_head_pos.col = apple_pos.col) and (new_head_pos.row = apple_pos.row);
+            eating := apple_valid and (new_head_pos.col = apple_pos.col) and (new_head_pos.row = apple_pos.row);
             if collision = false then
                 next_head <= (head + 1) mod NUM_CELLS;
                 next_pos <= new_head_pos;

@@ -2,6 +2,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.snake_package.all;
+
 entity board is
     port (
         clk: in std_logic;
@@ -16,7 +19,7 @@ entity board is
         audio_out: out std_logic_vector(7 downto 0);
         red: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
-        green: out std_logic_vector(3 downto 0);
+        green: out std_logic_vector(3 downto 0)
     );
 end entity board;
 
@@ -47,9 +50,8 @@ architecture arch of board is
     constant DIGIT0_X: integer := 584; -- least significant digit
 
     -- score value (0..999999) -> d5..d0
-    signal score: integer range 0 to 999999 := 0;
+    signal score: score_t;
 
-    signal d0, d1, d2, d3, d4, d5: unsigned(3 downto 0);
 
     -- font ROM interface
     signal cur_digit: unsigned(3 downto 0) := (others => '0');
@@ -70,32 +72,14 @@ architecture arch of board is
     signal occupied: board_bool_t;
     signal head_pos: position_board_t;
     signal apple_pos: position_board_t;
+    signal apple_valid: boolean := false;
 
-    signal light_square: boolean = false;
-    signal dark_square: boolean = false;
-    signal apple_square: boolean = false;
-    signal head_square: boolean = false;
-    signal occupied_square: boolean = false;
+    signal light_square: boolean := false;
+    signal dark_square: boolean := false;
+    signal apple_square: boolean := false;
+    signal head_square: boolean := false;
+    signal occupied_square: boolean := false;
 begin
-    ScoreToDigits: process(score)
-        variable t: integer;
-    begin
-        t := score;
-        d0 <= to_unsigned(t mod 10, 4);
-        t := t / 10;
-        d1 <= to_unsigned(t mod 10, 4);
-        t := t / 10;
-        d2 <= to_unsigned(t mod 10, 4);
-        t := t / 10;
-        d3 <= to_unsigned(t mod 10, 4);
-        t := t / 10;
-        d4 <= to_unsigned(t mod 10, 4);
-        t := t / 10;
-        d5 <= to_unsigned(t mod 10, 4);
-    end process;
-
-
-
     LettersOverlay: process(row, col, pixEN, letter_bits)
         variable x, y: integer;
         variable idx: integer;
@@ -175,12 +159,18 @@ begin
     ----------------------------------------------------------------
     -- SCORE OVERLAY: decide if current pixel is inside a digit
     ----------------------------------------------------------------
-    ScoreOverlay: process(row, col, pixEN, d0, d1, d2, d3, d4, d5, font_bits, letter_bits)
+    ScoreOverlay: process(row, col, pixEN, score, font_bits, letter_bits)
         variable x, y: integer;
         variable c: integer;
         variable ld: unsigned(3 downto 0);
         variable lr: integer range 0 to CHAR_H - 1;
         variable p: std_logic;
+        variable d0: unsigned(3 downto 0);
+        variable d1: unsigned(3 downto 0);
+        variable d2: unsigned(3 downto 0);
+        variable d3: unsigned(3 downto 0);
+        variable d4: unsigned(3 downto 0);
+        variable d5: unsigned(3 downto 0);
     begin
         p := '0';
         ld := (others => '0');
@@ -188,6 +178,13 @@ begin
 
         x := col;
         y := row;
+
+        d0 := to_unsigned(score(0), 4);
+        d1 := to_unsigned(score(1), 4);
+        d2 := to_unsigned(score(2), 4);
+        d3 := to_unsigned(score(3), 4);
+        d4 := to_unsigned(score(4), 4);
+        d5 := to_unsigned(score(5), 4);
 
         if pixEN = '1' then
             -- check vertical digit band
@@ -241,11 +238,11 @@ begin
         score_pix_on <= p;
     end process;
     checkerboard: process(row, col)
-        variable r : std_logic_vector(9 downto 0);
-        variable c : std_logic_vector(9 downto 0);
+        variable r : unsigned(9 downto 0);
+        variable c : unsigned(9 downto 0);
     begin
-        r := std_logic_vector(to_unsigned(row-32, 10));
-        c := std_logic_vector(to_unsigned(col, 10));
+        r := to_unsigned(row-32, 10);
+        c := to_unsigned(col, 10);
         if (r(9 downto 5)+c(9 downto 5)) mod 2 = 0 then
             light_square <= true;
             dark_square <= false;
@@ -259,9 +256,9 @@ begin
         end if;
     end process;
 
-    apple: process(row, col, apple_pos)
+    apple: process(row, col, apple_pos, apple_valid)
     begin
-        if (row >= 32) and ((col / 32) = apple_pos.col) and (((row - 32) / 32) = apple_pos.row) then
+        if apple_valid and (row >= 32) and ((col / 32) = apple_pos.col) and (((row - 32) / 32) = apple_pos.row) then
             apple_square <= true;
         else
             apple_square <= false;
@@ -278,13 +275,15 @@ begin
     end process;
 
     occ: process(row, col, occupied)
+        variable r : unsigned(9 downto 0);
+        variable c : unsigned(9 downto 0);
     begin
-        r := std_logic_vector(to_unsigned(row-32, 10));
-        c := std_logic_vector(to_unsigned(col, 10));
-        if occupied(r(9 downto 5), c(9 downto 5)) = true then
-            occ_square <= true;
+        r := to_unsigned(row-32, 10);
+        c := to_unsigned(col, 10);
+        if occupied(to_integer(r(9 downto 5)), to_integer(c(9 downto 5))) = true then
+            occupied_square <= true;
         else
-            occ_square <= false;
+            occupied_square <= false;
         end if;
     end process;
 
@@ -336,24 +335,24 @@ begin
                 end if;
                 --start ones that only draw on part of the square
                 if apple_square = true then 
-                    if (row(4 downto 0) > 6 and row(4 downto 0) < 25) and (col(4 downto 0) > 6 and col(4 downto 0) < 25) then
-                        red <= RED_APPLE(11 downto 8);
-                        green <= RED_APPLE(7 downto 4);
-                        blue <= RED_APPLE(3 downto 0);
+                    if ((row mod 32) > 6 and (row mod 32) < 25) and ((col mod 32) > 6 and (col mod 32) < 25) then
+                        red <= APPLE_RED(11 downto 8);
+                        green <= APPLE_RED(7 downto 4);
+                        blue <= APPLE_RED(3 downto 0);
                     end if;
                 elsif head_square = true then 
-                    if (row(4 downto 0) > 3 and row(4 downto 0) < 28) and (col(4 downto 0) > 3 and col(4 downto 0) < 28) then
+                    if ((row mod 32) > 3 and (row mod 32) < 28) and ((col mod 32) > 3 and (col mod 32) < 28) then
                         red <= BLUE_HEAD(11 downto 8);
                         green <= BLUE_HEAD(7 downto 4);
                         blue <= BLUE_HEAD(3 downto 0);
                     end if;
                 elsif occupied_square = true then
-                    if (row(4 downto 0) > 3 and row(4 downto 0) < 28) and (col(4 downto 0) > 3 and col(4 downto 0) < 28) then
+                    if ((row mod 32) > 3 and (row mod 32) < 28) and ((col mod 32) > 3 and (col mod 32) < 28) then
                         red <= BLUE_OCCUPIED(11 downto 8);
                         green <= BLUE_OCCUPIED(7 downto 4);
                         blue <= BLUE_OCCUPIED(3 downto 0);
                     end if;
-                elsif 
+                else
                     null;
                 end if;
             end if;

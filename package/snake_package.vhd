@@ -14,4 +14,7 @@ package snake_package is
     end record;
 
     type board_bool_t is array (0 to NUM_ROWS - 1, 0 to NUM_COLS - 1) of boolean;
+
+    subtype score_digit_t is integer range 0 to 9;
+    type score_t is array (5 downto 0) of score_digit_t;
 end package;

@@ -8,6 +8,7 @@ entity temp_top IS
 
         KEY           : in    std_logic_vector(1 downto 0); 
 
+        
         GPIO          : inout std_logic_vector(35 downto 0)
 	);
 end temp_top;
@@ -34,9 +35,9 @@ begin
                 clk         => MAX10_CLK1_50,
                 rst         => not key(0), 
 
-                chompy_appy => '0',
-                twisty_turn => '0',
-                ha_loser    => '0', 
+                chompy_appy => GPIO(8),
+                twisty_turn => GPIO(9),
+                ha_loser    => GPIO(10), 
 
                 audio_out   => GPIO(7 downto 0)
             );

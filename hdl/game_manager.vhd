@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library work;
 use work.snake_package.all;
@@ -20,13 +21,13 @@ end game_manager;
 architecture behavioral of game_manager is 
     type state_t is (PRE_START, RUNNING, OVER);
     signal current_state, next_state: state_t := PRE_START;
-    signal over : boolean := false;
     signal next_score : integer range 0 to 999999 := 0;
+    signal snake_rst : std_logic;
 
     --joysticks to snake_tracker
     signal command : direction;
 
-    signal apple_pos : position_board_t;
+    signal apple_pos, next_apple_pos : position_board_t;
     signal apple_valid : boolean := false;
 
     signal lfsr_out : std_logic_vector(8 downto 0);
@@ -38,10 +39,12 @@ architecture behavioral of game_manager is
 
     signal occupied : board_bool_t;
 begin
+    snake_rst <= '1' when (rst = '1' or current_state /= RUNNING) else '0';
+    apple_valid <= occupied(apple_pos.row, apple_pos.col);
     snake: entity work.snake_tracker 
         port map (
             clk => clk,
-            rst => rst or state /= RUNNING,
+            rst => snake_rst,
             command => command,
             apple_pos => apple_pos,
             ate => ate,
@@ -58,16 +61,11 @@ begin
         );
 
     rng: process(lfsr_out) 
-        variable next_apple_pos : position_board_t;
+        variable random_cell : integer;
     begin
-        next_apple_pos.row := lfsr_out / NUM_COLS;
-        next_apple_pos.col := lfsr_out mod NUM_COLS;
-        if not occupied(next_apple_pos.row, next_apple_pos.col) then
-            apple_pos <= next_apple_pos;
-            apple_valid <= true;
-        else 
-            apple_valid <= false;
-        end if;
+        random_cell := to_integer(unsigned(lfsr_out));
+        next_apple_pos.row <= random_cell / NUM_COLS;
+        next_apple_pos.col <= random_cell mod NUM_COLS;
     end process;
 
     score_process: process(ate)
@@ -93,6 +91,7 @@ begin
         elsif rising_edge(clk) then
             current_state <= next_state;
             score <= next_score;
+            apple_pos <= next_apple_pos;
         end if;
     end process;
 

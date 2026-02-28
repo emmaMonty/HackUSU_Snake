@@ -16,7 +16,6 @@ entity top is
 end entity top;
 
 architecture arch of top is
-    signal Start: std_logic;
     signal vga_clock: std_logic;
     signal ten_mhz_clock: std_logic;
     signal pll_locked: std_logic;
@@ -29,6 +28,7 @@ architecture arch of top is
             clk: in std_logic;
             rst: in std_logic;
             clk_10mhz: in std_logic;
+				clk_50mhz: in std_logic;
             pll_locked: in std_logic;
             start: in std_logic;
             audio_out: out std_logic_vector(7 downto 0);

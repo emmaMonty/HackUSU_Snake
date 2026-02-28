@@ -13,7 +13,7 @@ entity board is
         clk_10mhz: in std_logic;
         clk_50mhz: in std_logic;
         pll_locked: in std_logic;
-        audio_out: out std_logic_vector(9 downto 0);
+        audio_out: out std_logic_vector(7 downto 0);
         red: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
         green: out std_logic_vector(3 downto 0)
@@ -25,7 +25,7 @@ architecture arch of board is
     constant WHITE: std_logic_vector(11 downto 0) := X"FFF";
     constant LETBLUE: std_logic_vector(11 downto 0) := X"134";
     constant PURPLE: std_logic_vector(11 downto 0) := X"A0C";
-    constant RED: std_logic_vector(11 downto 0) := X"F00";
+    constant APPLE_RED: std_logic_vector(11 downto 0) := X"F00";
 
     constant CHAR_W: integer := 12;
     constant CHAR_H: integer := 20;

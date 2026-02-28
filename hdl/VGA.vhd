@@ -46,6 +46,7 @@ architecture arch of VGA is
             col: in integer;
             clk_10mhz: in std_logic;
             clk_50mhz: in std_logic;
+				audio_out: out std_logic_vector(7 downto 0);
             pll_locked: in std_logic;
             red: out std_logic_vector(3 downto 0);
             green: out std_logic_vector(3 downto 0);

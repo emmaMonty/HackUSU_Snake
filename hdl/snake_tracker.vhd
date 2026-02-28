@@ -23,10 +23,11 @@ end snake_tracker;
 architecture behavioral of snake_tracker is
     type circ_buffer_t is array (0 to NUM_CELLS - 1) of position_board_t;
     signal circ_buffer: circ_buffer_t;
+    signal next_pos : position_board_t;
     subtype cell_t is integer range 0 to NUM_CELLS - 1;
     signal head, next_head: cell_t := 0;
     signal tail, next_tail: cell_t := 0;
-    signal next_ate: boolean;
+    signal next_ate: std_logic;
     signal increment_counter: integer range 0 to INCREMENT_COUNT_TOP - 1 := 0;
     signal increment: boolean := false;
     signal next_occupied : board_bool_t := (others => (others => false));
@@ -35,18 +36,18 @@ begin
     occupy: process(circ_buffer, head, tail)
         variable i: integer;
     begin
-        if head >= tail then
-            for i in tail to head loop
-                next_occupied(circ_buffer(i).row, circ_buffer(i).col) <= true;
-            end loop;
-        else
-            for i in tail to NUM_CELLS - 1 loop
-                next_occupied(circ_buffer(i).row, circ_buffer(i).col) <= true;
-            end loop;
-            for i in 0 to head loop
-                next_occupied(circ_buffer(i).row, circ_buffer(i).col) <= true;
-            end loop;
-        end if;
+        next_occupied <= (others => (others => false));
+        for i in 0 to NUM_CELLS - 1 loop
+            if head >= tail then 
+                if i >= tail and i <= head then
+                    next_occupied(circ_buffer(i).row, circ_buffer(i).col) <= true;
+                end if;
+            else 
+                if i >= tail or i <= head then
+                    next_occupied(circ_buffer(i).row, circ_buffer(i).col) <= true;
+                end if;
+            end if;
+        end loop;
     end process;
 
     inc: process(clk, rst)
@@ -68,20 +69,28 @@ begin
                 increment <= false;
             end if;
             head <= next_head;
+            circ_buffer(next_head) <= next_pos;
             tail <= next_tail;
             ate <= next_ate;
             occupied <= next_occupied;
         end if;
     end process;
 
-    step: process(increment)
+    step: process(increment, circ_buffer, head, tail, command, apple_pos, next_occupied)
         variable collision: boolean := false;
         variable new_head_pos: position_board_t := circ_buffer(head);
-        variable new_head: cell_t := head;
         variable eating: boolean := false;
     begin
-        if increment = '1' then
-            if command = UP then
+        next_head <= head;
+        collision := false;
+        new_head_pos := circ_buffer(head);
+        next_pos <= circ_buffer(head);
+        next_ate <= '1';
+        next_tail <= tail;
+        crash <= '0';
+        over <= false;
+        if increment = true then
+            if command = UP_DIR then
                 if circ_buffer(head).col = 0 then
                     collision := true;
                 elsif next_occupied(circ_buffer(head).row - 1, circ_buffer(head).col) = true then
@@ -90,7 +99,7 @@ begin
                     new_head_pos.row := circ_buffer(head).row - 1;
                 end if;
             end if;
-            if command = DOWN then
+            if command = DOWN_DIR then
                 if circ_buffer(head).row = NUM_ROWS - 1 then
                     collision := true;
                 elsif next_occupied(circ_buffer(head).row + 1, circ_buffer(head).col) = true then
@@ -99,7 +108,7 @@ begin
                     new_head_pos.row := circ_buffer(head).row + 1;
                 end if;
             end if;
-            if command = LEFT then
+            if command = LEFT_DIR then
                 if circ_buffer(head).col = 0 then
                     collision := true;
                 elsif next_occupied(circ_buffer(head).row, circ_buffer(head).col - 1) = true then
@@ -108,7 +117,7 @@ begin
                     new_head_pos.col := circ_buffer(head).col - 1;
                 end if;
             end if;
-            if command = RIGHT then
+            if command = RIGHT_DIR then
                 if circ_buffer(head).col = NUM_COLS - 1 then
                     collision := true;
                 elsif next_occupied(circ_buffer(head).row, circ_buffer(head).col + 1) = true then
@@ -117,14 +126,15 @@ begin
                     new_head_pos.col := circ_buffer(head).col + 1;
                 end if;
             end if;
-            eating := new_head_pos = apple_pos;
+            eating := (new_head_pos.col = apple_pos.col) and (new_head_pos.row = apple_pos.row);
             if collision = false then
-                new_head := (head + 1) mod NUM_CELLS;
-                circ_buffer(new_head) <= new_head_pos;
-                next_ate <= eating;
-                if eating = true then
+                next_head <= (head + 1) mod NUM_CELLS;
+                next_pos <= new_head_pos;
+                if eating then
+                    next_ate <= '1';
                     next_tail <= tail;
                 else
+                    next_ate <= '0';
                     next_tail <= (tail + 1) mod NUM_CELLS;
                 end if;
             else

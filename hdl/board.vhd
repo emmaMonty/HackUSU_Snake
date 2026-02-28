@@ -37,13 +37,13 @@ architecture arch of board is
                         blue  <= BLACK(3  downto 0);
 
                         -- board outline (your original walls)
-                        if (((row > 16) and  (row < 464)) and (col = 1)) or
-                           (((row > 16) and  (row < 464)) and (col = 639)) then
+                        if (((row > 32) and  (row < 479)) and (col = 1)) or
+                           (((row > 32) and  (row < 479)) and (col = 639)) then
                             red   <= WHITE(11 downto 8);
                             green <= WHITE(7  downto 4);
                             blue  <= WHITE(3  downto 0);
 
-                        elsif ((row = 480) and ((col > 1) and (col < 639))) then
+                        elsif (((row = 479) or (row=32)) and ((col > 1) and (col < 639))) then
                             red   <= WHITE(11 downto 8);
                             green <= WHITE(7  downto 4);
                             blue  <= WHITE(3  downto 0);

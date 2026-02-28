@@ -16,7 +16,7 @@ entity board is
         audio_out: out std_logic_vector(7 downto 0);
         red: out std_logic_vector(3 downto 0);
         blue: out std_logic_vector(3 downto 0);
-        green: out std_logic_vector(3 downto 0)
+        green: out std_logic_vector(3 downto 0);
     );
 end entity board;
 
@@ -26,6 +26,12 @@ architecture arch of board is
     constant LETBLUE: std_logic_vector(11 downto 0) := X"134";
     constant PURPLE: std_logic_vector(11 downto 0) := X"A0C";
     constant APPLE_RED: std_logic_vector(11 downto 0) := X"F00";
+
+    constant BLUE_OCCUPIED: std_logic_vector(11 downto 0) := x"00d";
+    constant BLUE_HEAD: std_logic_vector(11 downto 0) := x"04f";
+
+    constant GREEN_D: std_logic_vector(11 downto 0) := x"9c4";
+    constant GREEN_L: std_logic_vector(11 downto 0) := x"ad5";
 
     constant CHAR_W: integer := 12;
     constant CHAR_H: integer := 20;
@@ -60,6 +66,16 @@ architecture arch of board is
     signal letter_row: integer range 0 to CHAR_H - 1 := 0;
     signal letter_bits: std_logic_vector(CHAR_W - 1 downto 0);
     signal letter_on: std_logic := '0';
+
+    signal occupied: board_bool_t;
+    signal head_pos: position_board_t;
+    signal apple_pos: position_board_t;
+
+    signal light_square: boolean = false;
+    signal dark_square: boolean = false;
+    signal apple_square: boolean = false;
+    signal head_square: boolean = false;
+    signal occupied_square: boolean = false;
 begin
     ScoreToDigits: process(score)
         variable t: integer;
@@ -224,7 +240,55 @@ begin
 
         score_pix_on <= p;
     end process;
-    process(clk, rst) is
+    checkerboard: process(row, col)
+        variable r : std_logic_vector(9 downto 0);
+        variable c : std_logic_vector(9 downto 0);
+    begin
+        r := std_logic_vector(to_unsigned(row-32, 10));
+        c := std_logic_vector(to_unsigned(col, 10));
+        if (r(9 downto 5)+c(9 downto 5)) mod 2 = 0 then
+            light_square <= true;
+            dark_square <= false;
+        else
+            light_square <= false;
+            dark_square <= true;
+        end if;
+        if row<32 then
+            light_square <= false;
+            dark_square <= false;
+        end if;
+    end process;
+
+    apple: process(row, col, apple_pos)
+    begin
+        if (row >= 32) and ((col / 32) = apple_pos.col) and (((row - 32) / 32) = apple_pos.row) then
+            apple_square <= true;
+        else
+            apple_square <= false;
+        end if;
+    end process;
+
+    head: process(row, col, head_pos)
+    begin
+        if (row >= 32) and ((col / 32) = head_pos.col) and (((row - 32) / 32) = head_pos.row) then
+            head_square <= true;
+        else
+            head_square <= false;
+        end if;
+    end process;
+
+    occ: process(row, col, occupied)
+    begin
+        r := std_logic_vector(to_unsigned(row-32, 10));
+        c := std_logic_vector(to_unsigned(col, 10));
+        if occupied(r(9 downto 5), c(9 downto 5)) = true then
+            occ_square <= true;
+        else
+            occ_square <= false;
+        end if;
+    end process;
+
+    draw: process(clk, rst) is
     begin
         if rst = '1' then
             red <= BLACK(11 downto 8);
@@ -249,15 +313,47 @@ begin
                     red <= WHITE(11 downto 8);
                     green <= WHITE(7 downto 4);
                     blue <= WHITE(3 downto 0);
+                --score
                 elsif score_pix_on = '1' then
                     red <= WHITE(11 downto 8);
                     green <= WHITE(7 downto 4);
                     blue <= WHITE(3 downto 0);
+                --letter
                 elsif letter_on = '1' then
                     red <= LETBLUE(11 downto 8);
                     green <= LETBLUE(7 downto 4);
                     blue <= LETBLUE(3 downto 0);
-                else
+                end if;
+                --square backgrounds
+                if light_square = true then
+                    red <= GREEN_L(11 downto 8);
+                    green <= GREEN_L(7 downto 4);
+                    blue <= GREEN_L(3 downto 0);
+                elsif dark_square = true then
+                    red <= GREEN_D(11 downto 8);
+                    green <= GREEN_D(7 downto 4);
+                    blue <= GREEN_D(3 downto 0);
+                end if;
+                --start ones that only draw on part of the square
+                if apple_square = true then 
+                    if (row(4 downto 0) > 6 and row(4 downto 0) < 25) and (col(4 downto 0) > 6 and col(4 downto 0) < 25) then
+                        red <= RED_APPLE(11 downto 8);
+                        green <= RED_APPLE(7 downto 4);
+                        blue <= RED_APPLE(3 downto 0);
+                    end if;
+                elsif head_square = true then 
+                    if (row(4 downto 0) > 3 and row(4 downto 0) < 28) and (col(4 downto 0) > 3 and col(4 downto 0) < 28) then
+                        red <= BLUE_HEAD(11 downto 8);
+                        green <= BLUE_HEAD(7 downto 4);
+                        blue <= BLUE_HEAD(3 downto 0);
+                    end if;
+                elsif occupied_square = true then
+                    if (row(4 downto 0) > 3 and row(4 downto 0) < 28) and (col(4 downto 0) > 3 and col(4 downto 0) < 28) then
+                        red <= BLUE_OCCUPIED(11 downto 8);
+                        green <= BLUE_OCCUPIED(7 downto 4);
+                        blue <= BLUE_OCCUPIED(3 downto 0);
+                    end if;
+                elsif 
                     null;
                 end if;
             end if;

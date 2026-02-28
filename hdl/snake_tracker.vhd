@@ -16,7 +16,8 @@ entity snake_tracker is
         ate: out std_logic;
         turn: out std_logic;
         crash: out std_logic;
-        occupied: out board_bool_t
+        occupied: out board_bool_t;
+        head_pos: out position_board_t
     );
 end snake_tracker;
 
@@ -33,6 +34,7 @@ architecture behavioral of snake_tracker is
     signal next_occupied : board_bool_t := (others => (others => false));
     signal over : boolean := false;
 begin
+    head_pos <= circ_buffer(head);
     occupy: process(circ_buffer, head, tail)
         variable i: integer;
     begin

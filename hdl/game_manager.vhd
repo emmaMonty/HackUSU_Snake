@@ -14,7 +14,11 @@ entity game_manager is
         clk_50mhz : in std_logic;
         pll_locked : in std_logic;
         audio_out : out std_logic_vector(7 downto 0);
-        score: out integer range 0 to 999999
+        score: out integer range 0 to 999999;
+
+        occupied: out board_bool_t;
+        head_pos: out position_board_t;
+        apple_pos: out position_board_t
     );
 end game_manager;
 

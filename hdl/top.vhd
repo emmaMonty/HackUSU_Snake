@@ -10,7 +10,8 @@ entity top is
         VGA_G: out std_logic_vector(3 downto 0);
         VGA_R: out std_logic_vector(3 downto 0);
         VGA_HS: out std_logic;
-        VGA_VS: out std_logic
+        VGA_VS: out std_logic;
+        GPIO: inout std_logic_vector(35 downto 0)
     );
 end entity top;
 
@@ -19,6 +20,9 @@ architecture arch of top is
     signal vga_clock: std_logic;
     signal ten_mhz_clock: std_logic;
     signal pll_locked: std_logic;
+    signal rst: std_logic;
+    signal start: std_logic;
+    signal audio_out : std_logic_vector(9 downto 0);
 
     component VGA
         port (
@@ -26,6 +30,8 @@ architecture arch of top is
             rst: in std_logic;
             clk_10mhz: in std_logic;
             pll_locked: in std_logic;
+            start: in std_logic;
+            audio_out: out std_logic_vector(9 downto 0);
             red: out std_logic_vector(3 downto 0);
             green: out std_logic_vector(3 downto 0);
             blue: out std_logic_vector(3 downto 0);
@@ -44,9 +50,12 @@ architecture arch of top is
         );
     end component pll;
 begin
+    rst <= not KEY(0);
+    start <= not KEY(1);
+    GPIO(9 downto 0) <= audio_out;
     PLL_INST: pll
         port map (
-            areset => not KEY(0),
+            areset => rst,
             inclk0 => MAX10_CLK1_50,
             c0 => ten_mhz_clock,
             c1 => vga_clock,
@@ -58,7 +67,9 @@ begin
             clk => vga_clock,
             clk_10mhz => ten_mhz_clock,
             pll_locked => pll_locked,
-            rst => not KEY(0),
+            start => start,
+            audio_out => audio_out,
+            rst => rst,
             red => VGA_R,
             green => VGA_G,
             blue => VGA_B,

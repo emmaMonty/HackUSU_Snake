@@ -18,6 +18,8 @@ entity VGA is
         rst: in std_logic;
         clk_10mhz: in std_logic;
         pll_locked: in std_logic;
+        start: in std_logic;
+        audio_out: out std_logic_vector(9 downto 0);
         blue: out std_logic_vector(3 downto 0);
         green: out std_logic_vector(3 downto 0);
         red: out std_logic_vector(3 downto 0);
@@ -37,6 +39,7 @@ architecture arch of VGA is
         port (
             clk: in std_logic;
             rst: in std_logic;
+            start: in std_logic;
             pixEN: in std_logic;
             row: in integer;
             col: in integer;
@@ -121,6 +124,8 @@ begin
         port map (
             clk => clk,
             rst => rst,
+            start => start,
+            audio_out => audio_out,
             pixEN => pixEN,
             row => row,
             col => col,

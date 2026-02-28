@@ -20,8 +20,7 @@ architecture arch of board is
     constant BLACK      : std_logic_vector(11 downto 0) := X"000";
     constant WHITE      : std_logic_vector(11 downto 0) := X"FFF";
 
-    process(clk, rst) 
-	 begin
+    process(clk, rst) is
         if rst = '1' then
             red   <= BLACK(11 downto 8);
             green <= BLACK(7  downto 4);

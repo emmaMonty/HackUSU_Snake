@@ -37,8 +37,8 @@
 # -------------------------------------------------------------------------- #
 
 
-set_global_assignment -name FAMILY "Cyclone V"
-set_global_assignment -name DEVICE 5CGXFC7C7F23C8
+set_global_assignment -name DEVICE 10M08DAF484C8G
+set_global_assignment -name FAMILY "MAX 10"
 set_global_assignment -name TOP_LEVEL_ENTITY Snake
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 24.1STD.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "20:42:58  FEBRUARY 27, 2026"

@@ -14,7 +14,7 @@
 --on the Quartus Prime software download page.
 
 
-component PLL
+component pll
 	PORT
 	(
 		areset		: IN STD_LOGIC  := '0';

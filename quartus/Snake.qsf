@@ -423,4 +423,6 @@ set_global_assignment -name VHDL_FILE ../hdl/VGA.vhd
 set_global_assignment -name VHDL_FILE ../hdl/board.vhd
 set_global_assignment -name SDC_FILE Snake.SDC
 set_global_assignment -name VHDL_FILE ../hdl/top.vhd
+set_global_assignment -name VHDL_FILE ../hdl/Score.vhd
+set_global_assignment -name VHDL_FILE ../hdl/Font.vhd
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
